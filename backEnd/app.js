@@ -1,49 +1,69 @@
-var createError = require('http-errors');
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
+var app = require('./index')
+var debug = require('debug')('ReviewApp:server')
+const http = require('http')
+var constants = require("./config/constants")
+var port = normalizePort(constants.port || '8000')
+const https = require('https')
+const fs = require('fs')
 
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
-var cors = require('cors');
-var app = express();
+/* HTTPS Server
+var httpsOptions = {
+  key: fs.readFileSync('wildcard.key'),
+  cert: fs.readFileSync('wildcard.crt')
+}
 
-app.use(cors({
-  origin:['http://localhost:4200','http://127.0.0.1:4200'],
-  credentials:true
-}));
-var mongoose = require('mongoose');
+const sslServer = https.createServer(httpsOptions, app).listen(443, () => {
+  console.log('https server running at ' + 443)
+})
+*/
 
-mongoose.connect('mongodb://localhost/restoData');
+const server = http.createServer(app).listen(port, () => {
+   console.log('http server running at ' + port)
+})
 
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'hbs');
+function normalizePort(val) {
+  var port = parseInt(val, 10)
 
-app.use(logger('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
+  if (isNaN(port)) {
+    return val
+  }
+  if (port >= 0) {
+    return port
+  }
+  return false
+}
 
-app.use('/', indexRouter);
-app.use('/users', usersRouter);
+function onError(error) {
+  if (error.syscall !== 'listen') {
+    throw error
+  }
 
-// catch 404 and forward to error handler
-app.use(function(req, res, next) {
-  next(createError(404));
-});
+  var bind = typeof port === 'string'
+    ? 'Pipe ' + port
+    : 'Port ' + port
 
-// error handler
-app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
+  // handle specific listen errors with friendly messages
+  switch (error.code) {
+    case 'EACCES':
+      console.error(bind + ' requires elevated privileges')
+      process.exit(1)
+      break
+    case 'EADDRINUSE':
+      console.error(bind + ' is already in use')
+      process.exit(1)
+      break
+    default:
+      throw error
+  }
+}
 
-  // render the error page
-  res.status(err.status || 500);
-  res.render('error');
-});
+// Event listener for HTTP server "listening" event.
+function onListening() {
 
-module.exports = app;
+  var addr = server.address()
+  var bind = typeof addr === 'string'
+    ? 'pipe ' + addr
+    : 'port ' + addr.port
+  debug('Listening on ' + bind)
+  console.log("server started on port" + addr.port)
+}
